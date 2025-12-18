@@ -115,7 +115,13 @@ function generateCustomQuestions(event, participantCategory) {
 
             if (q.type === 'text') {
                 questionsHTML += `<div class="floating-label"><textarea class="form-control" id="${fieldId}" name="${fieldName}" placeholder=" " required></textarea><label for="${fieldId}">${questionLabel}</label></div>`;
-            } else { 
+            } else if (q.type === 'options' && q.options) {
+                questionsHTML += `<div class="form-group"><label>${questionLabel}</label><select class="form-control" id="${fieldId}" name="${fieldName}" required><option value="" disabled selected>Select an option</option>`;
+                q.options.forEach(opt => {
+                    questionsHTML += `<option value="${opt}">${opt}</option>`;
+                });
+                questionsHTML += `</select></div>`;
+            } else {
                 questionsHTML += `<div class="form-group"><select class="form-control" id="${fieldId}" name="${fieldName}" required><option value="" disabled selected>${questionLabel}</option>`;
                 if (q.type === 'yesno') {
                     questionsHTML += `<option value="Yes">Yes</option><option value="No">No</option>`;
@@ -278,9 +284,19 @@ function generateRegistrationForm(event, participantCategory) {
                                 <div class="col-md-6"><div class="floating-label"><input type="text" class="form-control" id="${isStudent ? `p${i}_college` : `p${i}_dept`}" name="${isStudent ? `p${i}_college` : `p${i}_dept`}" placeholder=" " required><label for="${isStudent ? `p${i}_college` : `p${i}_dept`}">${isStudent ? 'College Name' : 'Department'}</label></div></div>
                             </div>`;
                 if (isStudent) {
+                    let yearOptions = '<option value="" disabled selected>Select Year</option>';
+                    if (event.selectedStudentYears && event.selectedStudentYears.length > 0) {
+                        event.selectedStudentYears.forEach(year => {
+                            const yearNum = parseInt(year);
+                            const yearLabel = yearNum === 1 ? '1st Year' : yearNum === 2 ? '2nd Year' : yearNum === 3 ? '3rd Year' : '4th Year';
+                            yearOptions += `<option value="${year}">${yearLabel}</option>`;
+                        });
+                    } else {
+                        yearOptions += '<option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option>';
+                    }
                     participantHTML += `
                             <div class="row">
-                                <div class="col-md-4"><div class="form-group"><select class="form-control" id="p${i}_year" name="p${i}_year" required><option value="" disabled selected>Select Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option></select></div></div>
+                                <div class="col-md-4"><div class="form-group"><select class="form-control" id="p${i}_year" name="p${i}_year" required>${yearOptions}</select></div></div>
                                 <div class="col-md-4"><div class="form-group"><select class="form-control" id="p${i}_branch" name="p${i}_branch" required><option value="" disabled selected>Select Branch</option><option value="CIVIL">CIVIL</option><option value="CSB">CSB</option><option value="CSC">CSC</option><option value="CSD">CSD</option><option value="CSE">CSE</option><option value="CSM">CSM</option><option value="ECE">ECE</option><option value="EEE">EEE</option><option value="IT">IT</option><option value="MECH">MECH</option><option value="OTHERS">OTHERS</option></select></div></div>
                                 <div class="col-md-4"><div class="form-group"><select class="form-control" id="p${i}_section" name="p${i}_section" required><option value="" disabled selected>Select Section</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option><option value="F">F</option><option value="OTHERS">OTHERS</option></select></div></div>
                             </div>

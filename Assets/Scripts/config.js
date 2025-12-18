@@ -1,8 +1,10 @@
 const firebaseConfig = {
-  apiKey: "AIzaSyCRx-XfWIBvBe0aFRy-06CNoit1UkMx6ek",
-  authDomain: "testing-registration-admin2.firebaseapp.com",
-  projectId: "testing-registration-admin2",
-  storageBucket: "testing-registration-admin2.firebasestorage.app",
-  messagingSenderId: "59780347755",
-  appId: "1:59780347755:web:b766e9fb06e8f25fc67e2e",
+  apiKey: "AIzaSyBYMp2-oF24Fd5oJZhVDJWVZW3iHigBo4Q",
+  authDomain: "registration-website-admin.firebaseapp.com",
+  databaseURL: "https://registration-website-admin-default-rtdb.firebaseio.com",
+  projectId: "registration-website-admin",
+  storageBucket: "registration-website-admin.firebasestorage.app",
+  messagingSenderId: "88040719942",
+  appId: "1:88040719942:web:d5d2c2adff9740d7cdec47",
+  measurementId: "G-2P1STQMF9H"
 };

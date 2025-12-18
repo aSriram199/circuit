@@ -91,6 +91,8 @@ function importRegistrationsFromFirestore() {
             category === 'student' ? getFieldValue(data, 'p1_branch') : '',
             category === 'student' ? getFieldValue(data, 'p1_section') : '',
             category === 'faculty' ? getFieldValue(data, 'p1_dept') : '',
+            getFieldValue(data, 'p1_name'),
+
             getFieldValue(data, 'transactionId'),
             getFieldValue(data, 'membershipId'),
             getFieldValue(data, 'screenshotURL') || getFieldValue(data, 'membershipCardURL'),

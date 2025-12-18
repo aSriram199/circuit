@@ -148,14 +148,40 @@ function populateCustomQuestions(containerId, questions) {
     container.innerHTML = '';
     if (questions && questions.length > 0) {
         questions.forEach(q => {
+
+            const isOptionsType = q.type === 'options';
+            const optionsValue = Array.isArray(q.options) ? q.options.join(', ') : (q.options || '');
             const newQuestionHTML = `<div class="border p-2 mb-2 rounded bg-light">
                 <div class="form-row align-items-center">
                     <div class="col-md-7"><input type="text" class="form-control form-control-sm" data-type="label" value="${q.label}" required></div>
-                    <div class="col-md-4"><select class="form-control form-control-sm" data-type="type" value="${q.type}"><option value="text">Text Answer</option><option value="yesno">Yes / No</option><option value="rating">Rating (1-10)</option></select></div>
+                    <div class="col-md-4">
+                        <select class="form-control form-control-sm" data-type="type">
+                            <option value="text">Text Answer</option>
+                            <option value="yesno">Yes / No</option>
+                            <option value="rating">Rating (1-10)</option>
+                            <option value="options">Multiple Choice (Options)</option>
+                        </select>
+                    </div>
                     <div class="col-md-1 text-right"><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.border').remove()">X</button></div>
-                </div></div>`;
+                </div>
+                <div class="form-row align-items-center mt-2 options-input-row" style="${isOptionsType ? '' : 'display:none;'}">
+                    <div class="col-12">
+                        <input type="text" class="form-control form-control-sm options-input" placeholder="Enter options separated by comma (e.g. Option 1, Option 2, Option 3)" value="${optionsValue}">
+                    </div>
+                </div>
+            </div>`;
             container.insertAdjacentHTML('beforeend', newQuestionHTML);
-            container.querySelector('.border:last-child [data-type="type"]').value = q.type;
+            const lastBorder = container.querySelector('.border:last-child');
+            const typeSelect = lastBorder.querySelector('[data-type="type"]');
+            typeSelect.value = q.type;
+            const optionsRow = lastBorder.querySelector('.options-input-row');
+            typeSelect.addEventListener('change', function() {
+                if (this.value === 'options') {
+                    optionsRow.style.display = '';
+                } else {
+                    optionsRow.style.display = 'none';
+                }
+            });
         });
     }
 }
@@ -178,9 +204,14 @@ async function populateFormForEdit(eventId) {
             document.getElementById('current-poster-img').src = event.posterURL;
         }
 
-        const eventAudienceSelect = document.getElementById('eventAudience');
-        eventAudienceSelect.value = event.eventAudience || 'students_only';
-        eventAudienceSelect.dispatchEvent(new Event('change'));
+        document.getElementById('eventAudience').value = event.eventAudience || 'students_only';
+        document.getElementById('eventAudience').dispatchEvent(new Event('change'));
+
+        const selectedYears = event.selectedStudentYears || ['2', '3', '4'];
+        document.getElementById('year1st').checked = selectedYears.includes('1');
+        document.getElementById('year2nd').checked = selectedYears.includes('2');
+        document.getElementById('year3rd').checked = selectedYears.includes('3');
+        document.getElementById('year4th').checked = selectedYears.includes('4');
 
         const participationSelect = document.getElementById('participationType');
         participationSelect.value = event.participationType || 'individual';
@@ -252,6 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const addFacultyQuestionBtn = document.getElementById('add-faculty-question-btn');
     const studentFeeWrapper = document.getElementById('student-fee-wrapper');
     const facultyFeeWrapper = document.getElementById('faculty-fee-wrapper');
+    const studentYearsSection = document.getElementById('student-years-section');
     
     const urlParams = new URLSearchParams(window.location.search);
     const eventIdToEdit = urlParams.get('edit');
@@ -282,6 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const audience = e.target.value;
             studentQuestionsSection.style.display = (audience === 'students_only' || audience === 'students_and_faculty') ? 'block' : 'none';
             facultyQuestionsSection.style.display = (audience === 'faculty_only' || audience === 'students_and_faculty') ? 'block' : 'none';
+            studentYearsSection.style.display = (audience === 'students_only' || audience === 'students_and_faculty') ? 'block' : 'none';
             
             if (studentFeeWrapper) studentFeeWrapper.style.display = (audience === 'students_only' || audience === 'students_and_faculty') ? 'block' : 'none';
             if (facultyFeeWrapper) facultyFeeWrapper.style.display = (audience === 'faculty_only' || audience === 'students_and_faculty') ? 'block' : 'none';
@@ -321,10 +354,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const newQuestionHTML = `<div class="border p-2 mb-2 rounded bg-light">
             <div class="form-row align-items-center">
                 <div class="col-md-7"><input type="text" class="form-control form-control-sm" data-type="label" placeholder="Question Label" required></div>
-                <div class="col-md-4"><select class="form-control form-control-sm" data-type="type"><option value="text">Text Answer</option><option value="yesno">Yes / No</option><option value="rating">Rating (1-10)</option></select></div>
+                <div class="col-md-4">
+                    <select class="form-control form-control-sm" data-type="type">
+                        <option value="text">Text Answer</option>
+                        <option value="yesno">Yes / No</option>
+                        <option value="rating">Rating (1-10)</option>
+                        <option value="options">Multiple Choice (Options)</option>
+                    </select>
+                </div>
                 <div class="col-md-1 text-right"><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.border').remove()">X</button></div>
-            </div></div>`;
+            </div>
+            <div class="form-row align-items-center mt-2 options-input-row" style="display:none;">
+                <div class="col-12">
+                    <input type="text" class="form-control form-control-sm options-input" placeholder="Enter options separated by comma (e.g. Option 1, Option 2, Option 3)">
+                </div>
+            </div>
+        </div>`;
         container.insertAdjacentHTML('beforeend', newQuestionHTML);
+        // Show/hide options input based on type
+        const lastBorder = container.querySelector('.border:last-child');
+        const typeSelect = lastBorder.querySelector('[data-type="type"]');
+        const optionsRow = lastBorder.querySelector('.options-input-row');
+        typeSelect.addEventListener('change', function() {
+            if (this.value === 'options') {
+                optionsRow.style.display = '';
+            } else {
+                optionsRow.style.display = 'none';
+            }
+        });
     }
     
     if (addStudentQuestionBtn) {
@@ -357,17 +414,35 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             function getCustomQuestions(containerId) {
-                return Array.from(document.querySelectorAll(`#${containerId} .border`)).map(q => ({
-                    label: q.querySelector('[data-type="label"]').value,
-                    type: q.querySelector('[data-type="type"]').value,
-                })).filter(q => q.label);
+                return Array.from(document.querySelectorAll(`#${containerId} .border`)).map(q => {
+                    const label = q.querySelector('[data-type="label"]').value;
+                    const type = q.querySelector('[data-type="type"]').value;
+                    let question = { label, type };
+                    if (type === 'options') {
+                        const optionsInput = q.querySelector('.options-input');
+                        if (optionsInput) {
+                            // Split by comma, trim whitespace, filter out empty
+                            question.options = optionsInput.value.split(',').map(opt => opt.trim()).filter(opt => opt);
+                        } else {
+                            question.options = [];
+                        }
+                    }
+                    return question;
+                }).filter(q => q.label);
             }
+
+            const selectedStudentYears = [];
+            if (document.getElementById('year1st').checked) selectedStudentYears.push('1');
+            if (document.getElementById('year2nd').checked) selectedStudentYears.push('2');
+            if (document.getElementById('year3rd').checked) selectedStudentYears.push('3');
+            if (document.getElementById('year4th').checked) selectedStudentYears.push('4');
 
             const eventData = {
                 eventName: document.getElementById('eventName').value,
                 description: document.getElementById('eventDescription').value,
                 participationType: currentParticipationType,
                 eventAudience: document.getElementById('eventAudience').value,
+                selectedStudentYears: selectedStudentYears,
                 minTeamSize: minTeamSize,
                 maxTeamSize: maxTeamSize,
                 emailTemplate: document.getElementById('emailContent').value,
@@ -432,6 +507,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     teamSizeRangeToggle.dispatchEvent(new Event('change'));
                     enablePaymentsCheckbox.checked = false;
                     enablePaymentsCheckbox.dispatchEvent(new Event('change'));
+                    document.getElementById('year1st').checked = false;
+                    document.getElementById('year2nd').checked = true;
+                    document.getElementById('year3rd').checked = true;
+                    document.getElementById('year4th').checked = true;
                     displayEvents();
                     setTimeout(() => { successMessage.style.display = 'none'; }, 5000);
                 }
