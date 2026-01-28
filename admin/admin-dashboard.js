@@ -26,12 +26,12 @@ function displayEvents() {
         querySnapshot.forEach(doc => {
             const event = doc.data();
             const eventId = doc.id;
-            const feeText = (event.studentFee > 0 || event.facultyFee > 0) 
-                ? `S:₹${event.studentFee || 0} | F:₹${event.facultyFee || 0}` 
+            const feeText = (event.studentFee > 0 || event.facultyFee > 0)
+                ? `S:₹${event.studentFee || 0} | F:₹${event.facultyFee || 0}`
                 : 'Free';
             const statusBadge = event.status === 'open' ? `<span class="badge badge-success">Open</span>` : `<span class="badge badge-secondary">Closed</span>`;
             const activeBadge = event.isActive ? `<span class="badge badge-primary">Yes</span>` : `<span class="badge badge-light">No</span>`;
-            
+
             const row = `<tr>
                 <td>${event.eventName}</td>
                 <td><strong>${feeText}</strong></td>
@@ -160,6 +160,7 @@ function populateCustomQuestions(containerId, questions) {
                             <option value="yesno">Yes / No</option>
                             <option value="rating">Rating (1-10)</option>
                             <option value="options">Multiple Choice (Options)</option>
+                            <option value="guideName">Guide Name</option>
                         </select>
                     </div>
                     <div class="col-md-1 text-right"><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.border').remove()">X</button></div>
@@ -175,7 +176,7 @@ function populateCustomQuestions(containerId, questions) {
             const typeSelect = lastBorder.querySelector('[data-type="type"]');
             typeSelect.value = q.type;
             const optionsRow = lastBorder.querySelector('.options-input-row');
-            typeSelect.addEventListener('change', function() {
+            typeSelect.addEventListener('change', function () {
                 if (this.value === 'options') {
                     optionsRow.style.display = '';
                 } else {
@@ -233,7 +234,7 @@ async function populateFormForEdit(eventId) {
 
         populateCustomQuestions('student-questions-container', event.studentCustomQuestions);
         populateCustomQuestions('faculty-questions-container', event.facultyCustomQuestions);
-        
+
         const enablePaymentsCheckbox = document.getElementById('enablePayments');
         enablePaymentsCheckbox.checked = event.paymentsEnabled || false;
         enablePaymentsCheckbox.dispatchEvent(new Event('change'));
@@ -250,6 +251,17 @@ async function populateFormForEdit(eventId) {
 
         document.getElementById('emailContent').value = event.emailTemplate || '';
         document.getElementById('confirmationEmailContent').value = event.confirmationEmailTemplate || '';
+
+        // Set the enable2ndMail checkbox based on stored value, or fallback to payments enabled
+        const enable2ndMailCheckbox = document.getElementById('enable2ndMail');
+        if (enable2ndMailCheckbox) {
+            // Prioritize the stored enable2ndMailEnabled field, otherwise check if payments enabled or has confirmation template
+            const shouldEnable = event.enable2ndMailEnabled !== undefined
+                ? event.enable2ndMailEnabled
+                : (event.paymentsEnabled || (event.confirmationEmailTemplate && event.confirmationEmailTemplate.length > 0));
+            enable2ndMailCheckbox.checked = shouldEnable;
+            enable2ndMailCheckbox.dispatchEvent(new Event('change'));
+        }
 
     } catch (error) {
         console.error("Error fetching event for edit:", error);
@@ -284,7 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const studentFeeWrapper = document.getElementById('student-fee-wrapper');
     const facultyFeeWrapper = document.getElementById('faculty-fee-wrapper');
     const studentYearsSection = document.getElementById('student-years-section');
-    
+
     const urlParams = new URLSearchParams(window.location.search);
     const eventIdToEdit = urlParams.get('edit');
 
@@ -296,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         document.getElementById('eventPoster').required = true;
     }
-    
+
     if (logoutButton) {
         logoutButton.addEventListener('click', () => auth.signOut().then(() => window.location.href = 'admin-login.html'));
     }
@@ -305,6 +317,21 @@ document.addEventListener('DOMContentLoaded', () => {
         enablePaymentsCheckbox.addEventListener('change', (e) => {
             const isChecked = e.target.checked;
             paymentDetailsContainer.style.display = isChecked ? 'block' : 'none';
+
+            // Auto-enable 2nd mail when payments are enabled
+            const enable2ndMailCheckbox = document.getElementById('enable2ndMail');
+            if (enable2ndMailCheckbox && isChecked) {
+                enable2ndMailCheckbox.checked = true;
+                enable2ndMailCheckbox.dispatchEvent(new Event('change'));
+            }
+        });
+    }
+
+    // Add event listener for the new Enable 2nd Mail checkbox
+    const enable2ndMailCheckbox = document.getElementById('enable2ndMail');
+    if (enable2ndMailCheckbox) {
+        enable2ndMailCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
             finalEmailContainer.style.display = isChecked ? 'block' : 'none';
         });
     }
@@ -315,13 +342,13 @@ document.addEventListener('DOMContentLoaded', () => {
             studentQuestionsSection.style.display = (audience === 'students_only' || audience === 'students_and_faculty') ? 'block' : 'none';
             facultyQuestionsSection.style.display = (audience === 'faculty_only' || audience === 'students_and_faculty') ? 'block' : 'none';
             studentYearsSection.style.display = (audience === 'students_only' || audience === 'students_and_faculty') ? 'block' : 'none';
-            
+
             if (studentFeeWrapper) studentFeeWrapper.style.display = (audience === 'students_only' || audience === 'students_and_faculty') ? 'block' : 'none';
             if (facultyFeeWrapper) facultyFeeWrapper.style.display = (audience === 'faculty_only' || audience === 'students_and_faculty') ? 'block' : 'none';
         });
         eventAudienceSelect.dispatchEvent(new Event('change'));
     }
-    
+
     if (participationType) {
         participationType.addEventListener('change', (e) => {
             teamSettingsContainer.style.display = e.target.value === 'team' ? 'block' : 'none';
@@ -348,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
+
     function addQuestion(containerId) {
         const container = document.getElementById(containerId);
         const newQuestionHTML = `<div class="border p-2 mb-2 rounded bg-light">
@@ -360,6 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <option value="yesno">Yes / No</option>
                         <option value="rating">Rating (1-10)</option>
                         <option value="options">Multiple Choice (Options)</option>
+                        <option value="guideName">Guide Name</option>
                     </select>
                 </div>
                 <div class="col-md-1 text-right"><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.border').remove()">X</button></div>
@@ -375,7 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const lastBorder = container.querySelector('.border:last-child');
         const typeSelect = lastBorder.querySelector('[data-type="type"]');
         const optionsRow = lastBorder.querySelector('.options-input-row');
-        typeSelect.addEventListener('change', function() {
+        typeSelect.addEventListener('change', function () {
             if (this.value === 'options') {
                 optionsRow.style.display = '';
             } else {
@@ -383,7 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
+
     if (addStudentQuestionBtn) {
         addStudentQuestionBtn.addEventListener('click', () => addQuestion('student-questions-container'));
     }
@@ -396,7 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             submitButton.disabled = true;
             submitButton.textContent = 'Saving...';
-            
+
             const currentParticipationType = document.getElementById('participationType').value;
             let minTeamSize, maxTeamSize;
 
@@ -454,8 +482,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 studentFee: document.getElementById('studentFee').value,
                 facultyFee: document.getElementById('facultyFee').value,
                 paymentInstructions: document.getElementById('paymentInstructions').value,
+                enable2ndMailEnabled: document.getElementById('enable2ndMail').checked,
             };
-            
+
             const eventPosterFile = document.getElementById('eventPoster').files[0];
             const qrCodeFile = document.getElementById('qrCodeImage').files[0];
 
@@ -507,6 +536,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     teamSizeRangeToggle.dispatchEvent(new Event('change'));
                     enablePaymentsCheckbox.checked = false;
                     enablePaymentsCheckbox.dispatchEvent(new Event('change'));
+                    const enable2ndMailCheckbox = document.getElementById('enable2ndMail');
+                    if (enable2ndMailCheckbox) {
+                        enable2ndMailCheckbox.checked = false;
+                        enable2ndMailCheckbox.dispatchEvent(new Event('change'));
+                    }
                     document.getElementById('year1st').checked = false;
                     document.getElementById('year2nd').checked = true;
                     document.getElementById('year3rd').checked = true;
@@ -541,13 +575,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         const storageRef = storage.ref(`past_event_posters/${Date.now()}_slot${i}_${posterFile.name}`);
                         const uploadTask = await storageRef.put(posterFile);
                         const downloadURL = await uploadTask.ref.getDownloadURL();
-                        await db.collection('pastEvents').add({ 
-                            title, 
-                            date, 
-                            posterURL: downloadURL, 
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+                        await db.collection('pastEvents').add({
+                            title,
+                            date,
+                            posterURL: downloadURL,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
                         });
-                    } catch (err) { 
+                    } catch (err) {
                         Swal.fire('Error', `Error uploading Slot ${i}: ${err.message}`, 'error');
                     }
                 }

@@ -19,79 +19,84 @@ async function displayRegistrations(eventId) {
   try {
     const eventDoc = await db.collection("events").doc(eventId).get();
     if (!eventDoc.exists) throw new Error("Event document not found.");
-    
+
     const eventData = eventDoc.data();
     document.getElementById("event-name-title").textContent = `Registrations for: ${eventData.eventName}`;
 
     const registrationCollectionName = `${eventData.eventName.replace(/\s+/g, "")}Participants`;
 
     db.collection(registrationCollectionName).orderBy("timeStamp", "desc").onSnapshot((snapshot) => {
-        container.innerHTML = "";
-        headerContainer.innerHTML = "";
-        allRegistrationsData = [];
+      container.innerHTML = "";
+      headerContainer.innerHTML = "";
+      allRegistrationsData = [];
 
-        if (snapshot.empty) {
-            loader.innerHTML = "<p>No registrations found for this event.</p>";
-            document.getElementById("export-csv-button").disabled = true;
-            return;
+      if (snapshot.empty) {
+        loader.innerHTML = "<p>No registrations found for this event.</p>";
+        document.getElementById("export-csv-button").disabled = true;
+        return;
+      }
+
+      let headers = ["Timestamp", "Category", "Participant(s)", "Contact", "College/Dept", "ID", "Proof", "Status", "Actions"];
+      headerContainer.innerHTML = `<tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr>`;
+
+      snapshot.forEach((doc) => {
+        const reg = doc.data();
+        reg.docId = doc.id;
+        allRegistrationsData.push(reg);
+
+        const date = reg.timeStamp ? reg.timeStamp.toDate().toLocaleString() : "N/A";
+        const category = reg.participantCategory || "student";
+
+        let names = [];
+        let contacts = [];
+        for (let i = 1; i <= (reg.participantCount || 1); i++) {
+          if (reg[`p${i}_name`]) names.push(reg[`p${i}_name`]);
+          if (reg[`p${i}_email`]) contacts.push(reg[`p${i}_email`]);
         }
-        
-        let headers = ["Timestamp", "Category", "Participant(s)", "Contact", "College/Dept", "ID", "Proof", "Status", "Actions"];
-        headerContainer.innerHTML = `<tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr>`;
 
-        snapshot.forEach((doc) => {
-            const reg = doc.data();
-            reg.docId = doc.id;
-            allRegistrationsData.push(reg);
-            
-            const date = reg.timeStamp ? reg.timeStamp.toDate().toLocaleString() : "N/A";
-            const category = reg.participantCategory || "student";
-            
-            let names = [];
-            let contacts = [];
-            for (let i = 1; i <= (reg.participantCount || 1); i++) {
-                if(reg[`p${i}_name`]) names.push(reg[`p${i}_name`]);
-                if(reg[`p${i}_email`]) contacts.push(reg[`p${i}_email`]);
-            }
+        const collegeOrDept = category === "student" ? reg.p1_college || "" : reg.p1_dept || "";
 
-            const collegeOrDept = category === "student" ? reg.p1_college || "" : reg.p1_dept || "";
-
-            let rowHTML = `<td>${date}</td>
+        let rowHTML = `<td>${date}</td>
                            <td><span class="badge badge-info">${category.toUpperCase()}</span></td>
                            <td>${names.join('<br>')}</td>
                            <td>${contacts.join('<br>')}</td>
                            <td>${collegeOrDept}</td>`;
-            
-            const statusBadge = reg.verificationStatus === "verified" ? `<span class="badge badge-success">Verified</span>` : `<span class="badge badge-warning">Pending</span>`;
-            
-            if (reg.isIeeeMember) {
-                rowHTML += `<td>${reg.membershipId || "N/A"}</td>
+
+        const statusBadge = reg.verificationStatus === "verified" ? `<span class="badge badge-success">Verified</span>` : `<span class="badge badge-warning">Pending</span>`;
+
+        if (reg.isIeeeMember) {
+          rowHTML += `<td>${reg.membershipId || "N/A"}</td>
                             <td><a href="${reg.membershipCardURL}" target="_blank" class="btn btn-sm btn-outline-info">View Card</a></td>`;
-            } else {
-                rowHTML += `<td>${reg.transactionId || "N/A"}</td>
+        } else {
+          rowHTML += `<td>${reg.transactionId || "N/A"}</td>
                             <td>${reg.screenshotURL ? `<a href="${reg.screenshotURL}" target="_blank" class="btn btn-sm btn-outline-info">View</a>` : "N/A"}</td>`;
-            }
+        }
 
-            rowHTML += `<td>${statusBadge}</td>`;
+        rowHTML += `<td>${statusBadge}</td>`;
 
-            if (reg.verificationStatus !== 'not-required') {
-                 rowHTML += `<td>
+        // Check if 2nd mail is enabled (either through new setting or payments for backward compatibility)
+        const is2ndMailEnabled = eventData.enable2ndMailEnabled || (eventData.paymentsEnabled && eventData.confirmationEmailTemplate);
+
+        // Show verify button if 2nd mail is enabled, regardless of initial verificationStatus
+        // This handles old registrations created before enable2ndMailEnabled was added
+        if (is2ndMailEnabled) {
+          rowHTML += `<td>
                                 ${reg.verificationStatus !== "verified" ? `<button class="btn btn-sm btn-primary verify-btn" data-doc-id="${doc.id}">Verify</button>` : "Confirmed"}
                             </td>`;
-            } else {
-                rowHTML += `<td>N/A</td>`;
-            }
+        } else {
+          rowHTML += `<td>N/A</td>`;
+        }
 
-            container.innerHTML += `<tr>${rowHTML}</tr>`;
-        });
+        container.innerHTML += `<tr>${rowHTML}</tr>`;
+      });
 
-        loader.style.display = "none";
-        table.style.display = "table";
-        document.getElementById("export-csv-button").disabled = false;
-        addVerificationListeners(registrationCollectionName, eventData);
+      loader.style.display = "none";
+      table.style.display = "table";
+      document.getElementById("export-csv-button").disabled = false;
+      addVerificationListeners(registrationCollectionName, eventData);
     }, (error) => {
-        console.error("Error fetching registrations: ", error);
-        loader.innerHTML = "<p>Error loading registrations. The collection might not exist.</p>";
+      console.error("Error fetching registrations: ", error);
+      loader.innerHTML = "<p>Error loading registrations. The collection might not exist.</p>";
     });
   } catch (error) {
     console.error("Error setting up registration display:", error);
@@ -110,9 +115,18 @@ function addVerificationListeners(registrationCollectionName, eventData) {
     if (!registration) return;
 
     const isMember = registration.isIeeeMember;
+    const hasPayment = registration.transactionId || registration.screenshotURL;
+
+    // Determine the appropriate verification message
+    let verificationTitle = "Verify Participant?";
+    if (isMember && eventData.isFreeForIeeeMembers) {
+      verificationTitle = "Verify IEEE Member?";
+    } else if (hasPayment || eventData.paymentsEnabled) {
+      verificationTitle = "Verify Payment?";
+    }
 
     Swal.fire({
-      title: isMember ? "Verify IEEE Member?" : "Verify Payment?",
+      title: verificationTitle,
       text: "This will send the final confirmation email to all participants.",
       icon: "question",
       showCancelButton: true,
@@ -126,17 +140,23 @@ function addVerificationListeners(registrationCollectionName, eventData) {
 
         try {
           await db.collection(registrationCollectionName).doc(docId).update({ verificationStatus: "verified" });
-          
+
           const regData = registration;
           let allEmails = [];
           let allNames = [];
-          for(let i=1; i<= (regData.participantCount || 1); i++){
-              if(regData[`p${i}_email`]) allEmails.push(regData[`p${i}_email`]);
-              if(regData[`p${i}_name`]) allNames.push(regData[`p${i}_name`]);
+          for (let i = 1; i <= (regData.participantCount || 1); i++) {
+            if (regData[`p${i}_email`]) allEmails.push(regData[`p${i}_email`]);
+            if (regData[`p${i}_name`]) allNames.push(regData[`p${i}_name`]);
           }
 
           const mailCollectionName = `${eventData.eventName.replace(/\s+/g, "")}Mails`;
           const mailSubject = `Your Registration is Confirmed for ${eventData.eventName}!`;
+
+          // Check if confirmation email template exists
+          if (!eventData.confirmationEmailTemplate) {
+            throw new Error("No confirmation email template configured for this event.");
+          }
+
           const mailBody = eventData.confirmationEmailTemplate.replace(/{name}/g, allNames.join(" & ")).replace(/{eventName}/g, eventData.eventName);
 
           if (allEmails.length > 0) {
@@ -145,7 +165,7 @@ function addVerificationListeners(registrationCollectionName, eventData) {
           } else {
             throw new Error("No participant emails found to send confirmation.");
           }
-          
+
         } catch (error) {
           console.error("Error during verification: ", error);
           Swal.fire("Error!", "An error occurred during verification.", "error");
@@ -159,47 +179,47 @@ function addVerificationListeners(registrationCollectionName, eventData) {
 
 function exportToCsv(filename, data) {
   if (!data || data.length === 0) {
-        alert("No data to export.");
-        return;
+    alert("No data to export.");
+    return;
+  }
+  const processedData = JSON.parse(JSON.stringify(data));
+  processedData.forEach(row => {
+    if (row.timeStamp && typeof row.timeStamp === 'object') {
+      const seconds = row.timeStamp.seconds || (row.timeStamp._seconds);
+      if (seconds) {
+        row.timeStamp = new Date(seconds * 1000).toLocaleString();
+      }
     }
-    const processedData = JSON.parse(JSON.stringify(data));
-    processedData.forEach(row => {
-        if (row.timeStamp && typeof row.timeStamp === 'object') {
-            const seconds = row.timeStamp.seconds || (row.timeStamp._seconds);
-            if (seconds) {
-                row.timeStamp = new Date(seconds * 1000).toLocaleString();
-            }
-        }
+  });
+  const allHeaders = new Set();
+  processedData.forEach(row => Object.keys(row).forEach(key => allHeaders.add(key)));
+  const headers = Array.from(allHeaders);
+  const csvRows = [headers.join(",")];
+  for (const row of processedData) {
+    const values = headers.map(header => {
+      const rawValue = row[header];
+      let value;
+      if (rawValue === null || rawValue === undefined) {
+        value = '';
+      } else if (typeof rawValue === 'object') {
+        value = JSON.stringify(rawValue);
+      } else {
+        value = rawValue;
+      }
+      const escaped = ('' + value).replace(/"/g, '""');
+      return `"${escaped}"`;
     });
-    const allHeaders = new Set();
-    processedData.forEach(row => Object.keys(row).forEach(key => allHeaders.add(key)));
-    const headers = Array.from(allHeaders);
-    const csvRows = [headers.join(",")];
-    for (const row of processedData) {
-        const values = headers.map(header => {
-            const rawValue = row[header];
-            let value;
-            if (rawValue === null || rawValue === undefined) {
-                value = '';
-            } else if (typeof rawValue === 'object') {
-                value = JSON.stringify(rawValue);
-            } else {
-                value = rawValue;
-            }
-            const escaped = ('' + value).replace(/"/g, '""');
-            return `"${escaped}"`;
-        });
-        csvRows.push(values.join(","));
-    }
-    const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.setAttribute("hidden", "");
-    a.setAttribute("href", url);
-    a.setAttribute("download", filename);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    csvRows.push(values.join(","));
+  }
+  const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.setAttribute("hidden", "");
+  a.setAttribute("href", url);
+  a.setAttribute("download", filename);
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 document.addEventListener("DOMContentLoaded", () => {

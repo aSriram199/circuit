@@ -54,7 +54,7 @@ async function loadActiveEvent() {
 
 // --- DISPLAY FUNCTIONS ---
 function displayNoEventMessage(message = "There are no active events at the moment. Please check back later!") {
-    if(mainContent) mainContent.innerHTML = `<div class="container text-center my-5"><h2>${message}</h2></div>`;
+    if (mainContent) mainContent.innerHTML = `<div class="container text-center my-5"><h2>${message}</h2></div>`;
 }
 
 function displayRegistrationClosedMessage() {
@@ -103,7 +103,7 @@ function generateCustomQuestions(event, participantCategory) {
     } else if (participantCategory === 'faculty' && event.facultyCustomQuestions) {
         customQuestions = event.facultyCustomQuestions;
     }
-    
+
     let questionsHTML = '';
     if (customQuestions && customQuestions.length > 0) {
         questionsHTML = `<div class="participant"><label class="participant-label">Additional Questions</label><div class="fields">`;
@@ -114,7 +114,60 @@ function generateCustomQuestions(event, participantCategory) {
             const questionLabel = `${questionNumber}. ${q.label}`;
 
             if (q.type === 'text') {
-                questionsHTML += `<div class="floating-label"><textarea class="form-control" id="${fieldId}" name="${fieldName}" placeholder=" " required></textarea><label for="${fieldId}">${questionLabel}</label></div>`;
+                questionsHTML += `<div class="floating-label"><input type="text" class="form-control" id="${fieldId}" name="${fieldName}" placeholder="" required><label for="${fieldId}">${questionLabel}</label></div>`;
+            } else if (q.type === 'guideName') {
+                const titleFieldId = `${fieldId}_title`;
+                const nameFieldId = `${fieldId}_name`;
+                const designationFieldId = `${fieldId}_designation`;
+                questionsHTML += `
+                    <div class="participant">
+                        <label class="participant-label">${questionLabel}</label>
+                        <div class="fields">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <select class="form-control" id="${titleFieldId}" name="${fieldName}_title">
+                                            <option value="" disabled selected>Select Title</option>
+                                            <option value="Dr">Dr</option>
+                                            <option value="Mr">Mr</option>
+                                            <option value="Mrs">Mrs</option>
+                                            <option value="Ms">Ms</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="floating-label">
+                                        <input type="text" class="form-control" id="${nameFieldId}" name="${fieldName}_name" placeholder=" " style="height: 30px; min-height: 30px; padding-top: 4px;">
+                                        <label for="${nameFieldId}">Name</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <select class="form-control" id="${designationFieldId}" name="${fieldName}_designation">
+                                            <option value="" disabled selected>Select Designation</option>
+                                            <option value="Professor">Professor</option>
+                                            <option value="Associate Professor">Associate Professor</option>
+                                            <option value="Assistant Professor">Assistant Professor</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="floating-label">
+                                        <input type="email" class="form-control" id="${fieldId}_email" name="${fieldName}_email" placeholder=" ">
+                                        <label for="${fieldId}_email">Email</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="floating-label">
+                                        <input type="tel" class="form-control" id="${fieldId}_phone" name="${fieldName}_phone" placeholder=" ">
+                                        <label for="${fieldId}_phone">Phone No.</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
             } else if (q.type === 'options' && q.options) {
                 questionsHTML += `<div class="form-group"><label>${questionLabel}</label><select class="form-control" id="${fieldId}" name="${fieldName}" required><option value="" disabled selected>Select an option</option>`;
                 q.options.forEach(opt => {
@@ -142,7 +195,7 @@ function generateRegistrationForm(event, participantCategory) {
     regForm.style.display = 'block';
 
     let finalHTML = '';
-    
+
     let paymentSectionHTML = '';
     if (event.paymentsEnabled && event.qrCodeURL) {
         const fee = participantCategory === 'student' ? (event.studentFee || 0) : (event.facultyFee || 0);
@@ -170,16 +223,16 @@ function generateRegistrationForm(event, participantCategory) {
     }
 
     const isCardUploadRequired = event.paymentsEnabled && event.isFreeForIeeeMembers !== false;
-    
+
     let ieeeMemberSectionHTML = `
         <div id="ieee-member-section" style="display: none;">
             <div class="participant">
                 <label class="participant-label">IEEE Member Details</label>`;
-    
+
     if (isCardUploadRequired) {
         ieeeMemberSectionHTML += `<p>Registration for this event is free for IEEE members. Please provide your membership details for verification.</p>`;
     }
-    
+
     ieeeMemberSectionHTML += `
                 <div class="floating-label">
                     <input type="tel" class="form-control" id="membershipId" name="membershipId" placeholder=" ">
@@ -198,9 +251,9 @@ function generateRegistrationForm(event, participantCategory) {
                     <div id="card-chosen" class="file-chosen-text">*No file selected</div>
                 </div>`;
     }
-    
+
     ieeeMemberSectionHTML += `</div></div>`;
-    
+
     const teamSizeSelectorContainer = document.getElementById('team-size-selector-container');
     let teamSizeSelectorHTML = '';
 
@@ -221,12 +274,12 @@ function generateRegistrationForm(event, participantCategory) {
     } else {
         teamSizeSelectorContainer.style.display = 'none';
     }
-    
+
     finalHTML += `<div id="participant-fields-container"></div>`;
     finalHTML += ieeeMemberSectionHTML;
     finalHTML += paymentSectionHTML;
     finalHTML += generateCustomQuestions(event, participantCategory);
-    
+
     if (regFormContainer) {
         regFormContainer.innerHTML = finalHTML;
 
@@ -240,7 +293,7 @@ function generateRegistrationForm(event, participantCategory) {
             }
 
             // The crucial listener is for the FIRST participant's dropdown
-            const ieeeMemberSelect = document.getElementById('p1_ieee_member'); 
+            const ieeeMemberSelect = document.getElementById('p1_ieee_member');
             if (ieeeMemberSelect) {
                 ieeeMemberSelect.addEventListener('change', (e) => {
                     const isMember = e.target.value === 'Yes';
@@ -248,7 +301,7 @@ function generateRegistrationForm(event, participantCategory) {
                     const cardUploadInput = document.getElementById('membershipCard');
                     const paymentSection = document.getElementById('payment-section');
                     const ieeeMemberSection = document.getElementById('ieee-member-section');
-                    
+
                     const needsPayment = !isMember || (isMember && !isFreeForMembers);
 
                     if (ieeeMemberSection) ieeeMemberSection.style.display = isMember ? 'block' : 'none';
@@ -262,17 +315,17 @@ function generateRegistrationForm(event, participantCategory) {
                     }
                 });
             }
-            
+
             setupDropArea('paymentScreenshot');
             setupDropArea('membershipCard');
         };
-        
+
         const generateParticipantFields = (count) => {
             const container = document.getElementById('participant-fields-container');
             container.innerHTML = '';
             let participantHTML = '';
             const isStudent = participantCategory === 'student';
-            
+
             for (let i = 1; i <= count; i++) {
                 const pLabel = count > 1 ? `Participant ${i}` : (isStudent ? 'Student' : 'Faculty');
                 participantHTML += `
@@ -349,7 +402,7 @@ function generateRegistrationForm(event, participantCategory) {
 function setupDropArea(inputId) {
     const fileInput = document.getElementById(inputId);
     if (!fileInput) return;
-    
+
     const dropArea = fileInput.parentElement;
     const chosenTextId = inputId === 'paymentScreenshot' ? 'file-chosen' : 'card-chosen';
     const chosenText = document.getElementById(chosenTextId);
@@ -380,96 +433,132 @@ function setupDropArea(inputId) {
 
 // --- FORM SUBMISSION ---
 if (regForm) {
-    regForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const submitButton = document.getElementById("submit-button");
-        submitButton.disabled = true;
-        submitButton.textContent = "Submitting...";
+    const agreeCheckbox = document.getElementById('agreeTermsCheckbox');
+    const proceedBtn = document.getElementById('proceedSubmitBtn');
+    const termsCloseBtn = document.getElementById('terms-close-btn');
 
-        try {
-            const eventsRef = db.collection("events");
-            const snapshot = await eventsRef.where("isActive", "==", true).limit(1).get();
-            if (snapshot.empty) {
-                Swal.fire("Registration Closed", "This event is no longer active.", "warning");
-                return;
-            }
+    if (agreeCheckbox) {
+        agreeCheckbox.addEventListener('change', (e) => {
+            if (proceedBtn) proceedBtn.disabled = !e.target.checked;
+            if (termsCloseBtn) termsCloseBtn.disabled = !e.target.checked;
+        });
+    }
 
-            const eventData = snapshot.docs[0].data();
-            const formData = new FormData(regForm);
-            const registrationData = {};
-            
-            const teamSize = eventData.participationType === 'team' ? (document.getElementById('team-size-selector') ? parseInt(document.getElementById('team-size-selector').value, 10) : eventData.maxTeamSize) : 1;
-            registrationData.participantCount = teamSize;
+    if (proceedBtn) {
+        proceedBtn.addEventListener('click', () => {
+            $('#termsModal').modal('hide');
+            processRegistration();
+        });
+    }
 
-            for (const [key, value] of formData.entries()) {
-                if (!['paymentScreenshot', 'membershipCard'].includes(key)) {
-                    registrationData[key] = value;
-                }
-            }
-
-            registrationData.timeStamp = firebase.firestore.FieldValue.serverTimestamp();
-            const isMember = formData.get('p1_ieee_member') === 'Yes';
-            const isFreeForMembers = eventData.isFreeForIeeeMembers !== false;
-            const needsToPay = !isMember || (isMember && !isFreeForMembers);
-
-            if (isMember) {
-                registrationData.isIeeeMember = true;
-                registrationData.membershipId = formData.get("membershipId");
-                
-                if (isFreeForMembers && eventData.paymentsEnabled) {
-                    const cardFile = formData.get("membershipCard");
-                    if (!cardFile || cardFile.size === 0) throw new Error("IEEE Membership Card is required.");
-                    const cardRef = storage.ref(`membership_cards/${Date.now()}_${cardFile.name}`);
-                    const uploadTask = await cardRef.put(cardFile);
-                    registrationData.membershipCardURL = await uploadTask.ref.getDownloadURL();
-                }
-            } else {
-                 registrationData.isIeeeMember = false;
-            }
-
-            if (eventData.paymentsEnabled && needsToPay) {
-                const screenshotFile = formData.get("paymentScreenshot");
-                if (!screenshotFile || screenshotFile.size === 0) throw new Error("Payment screenshot is required.");
-                
-                registrationData.transactionId = formData.get("transactionId");
-
-                const screenshotRef = storage.ref(`screenshots/${Date.now()}_${screenshotFile.name}`);
-                const uploadTask = await screenshotRef.put(screenshotFile);
-                registrationData.screenshotURL = await uploadTask.ref.getDownloadURL();
-            }
-
-            registrationData.verificationStatus = (eventData.paymentsEnabled && needsToPay) || (isMember && isFreeForMembers) ? "pending" : "not-required";
-            
-            const collectionSuffix = "Participants";
-            const collectionName = `${eventData.eventName.replace(/\s+/g, "")}${collectionSuffix}`;
-            await db.collection(collectionName).add(registrationData);
-
-            let allEmails = [];
-            let allNames = [];
-            for(let i=1; i<=teamSize; i++){
-                allEmails.push(formData.get(`p${i}_email`));
-                allNames.push(formData.get(`p${i}_name`));
-            }
-
-            const mailCollectionName = `${eventData.eventName.replace(/\s+/g, "")}Mails`;
-            const mailSubject = `Registration Received for ${eventData.eventName} | IEEE - VBIT SB`;
-            let mailBody = eventData.emailTemplate.replace(/{name}/g, allNames.join(" & ")).replace(/{eventName}/g, eventData.eventName);
-            if (allEmails.length > 0 && allEmails[0]) {
-                await db.collection(mailCollectionName).add({ to: allEmails, message: { subject: mailSubject, html: mailBody } });
-            }
-
-            const successTitle = (eventData.paymentsEnabled && needsToPay) || (isMember && isFreeForMembers) ? "Registration Submitted!" : "Registration Successful!";
-            const successText = (eventData.paymentsEnabled && needsToPay) || (isMember && isFreeForMembers) ? "Your spot is reserved. You will receive a final confirmation email once your details are verified by our team." : "Thank you for registering. You will receive a confirmation email shortly.";
-            Swal.fire({ title: successTitle, text: successText, icon: 'info', confirmButtonText: "Great!" }).then(() => { window.location.href = "about.html"; });
-
-        } catch (error) {
-            console.error("Error submitting registration:", error);
-            Swal.fire("Submission Error", error.message, "error");
-        } finally {
-            submitButton.disabled = false;
-            submitButton.textContent = "Submit";
-        }
+    $('#termsModal').on('hidden.bs.modal', function () {
+        if (agreeCheckbox) agreeCheckbox.checked = false;
+        if (proceedBtn) proceedBtn.disabled = true;
+        if (termsCloseBtn) termsCloseBtn.disabled = true;
     });
+
+    regForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        $('#termsModal').modal('show');
+    });
+}
+
+async function processRegistration() {
+    const submitButton = document.getElementById("submit-button");
+    submitButton.disabled = true;
+    submitButton.textContent = "Submitting...";
+
+    try {
+        const eventsRef = db.collection("events");
+        const snapshot = await eventsRef.where("isActive", "==", true).limit(1).get();
+        if (snapshot.empty) {
+            Swal.fire("Registration Closed", "This event is no longer active.", "warning");
+            return;
+        }
+
+        const eventData = snapshot.docs[0].data();
+        const formData = new FormData(regForm);
+        const registrationData = {};
+
+        const teamSize = eventData.participationType === 'team' ? (document.getElementById('team-size-selector') ? parseInt(document.getElementById('team-size-selector').value, 10) : eventData.maxTeamSize) : 1;
+        registrationData.participantCount = teamSize;
+
+        for (const [key, value] of formData.entries()) {
+            if (!['paymentScreenshot', 'membershipCard'].includes(key)) {
+                registrationData[key] = value;
+            }
+        }
+
+        registrationData.timeStamp = firebase.firestore.FieldValue.serverTimestamp();
+        const isMember = formData.get('p1_ieee_member') === 'Yes';
+        const isFreeForMembers = eventData.isFreeForIeeeMembers !== false;
+        const needsToPay = !isMember || (isMember && !isFreeForMembers);
+
+        if (isMember) {
+            registrationData.isIeeeMember = true;
+            registrationData.membershipId = formData.get("membershipId");
+
+            if (isFreeForMembers && eventData.paymentsEnabled) {
+                const cardFile = formData.get("membershipCard");
+                if (!cardFile || cardFile.size === 0) throw new Error("IEEE Membership Card is required.");
+                const cardRef = storage.ref(`membership_cards/${Date.now()}_${cardFile.name}`);
+                const uploadTask = await cardRef.put(cardFile);
+                registrationData.membershipCardURL = await uploadTask.ref.getDownloadURL();
+            }
+        } else {
+            registrationData.isIeeeMember = false;
+        }
+
+        if (eventData.paymentsEnabled && needsToPay) {
+            const screenshotFile = formData.get("paymentScreenshot");
+            if (!screenshotFile || screenshotFile.size === 0) throw new Error("Payment screenshot is required.");
+
+            registrationData.transactionId = formData.get("transactionId");
+
+            const screenshotRef = storage.ref(`screenshots/${Date.now()}_${screenshotFile.name}`);
+            const uploadTask = await screenshotRef.put(screenshotFile);
+            registrationData.screenshotURL = await uploadTask.ref.getDownloadURL();
+        }
+
+        // Set verification status based on payment requirements or 2nd mail enabled
+        const requires2ndMail = eventData.enable2ndMailEnabled === true;
+        const requiresPaymentVerification = (eventData.paymentsEnabled && needsToPay);
+        const requiresMemberVerification = (isMember && isFreeForMembers);
+
+        registrationData.verificationStatus = requiresPaymentVerification || requiresMemberVerification || requires2ndMail ? "pending" : "not-required";
+
+        const collectionSuffix = "Participants";
+        const collectionName = `${eventData.eventName.replace(/\s+/g, "")}${collectionSuffix}`;
+        await db.collection(collectionName).add(registrationData);
+
+        let allEmails = [];
+        let allNames = [];
+        for (let i = 1; i <= teamSize; i++) {
+            allEmails.push(formData.get(`p${i}_email`));
+            allNames.push(formData.get(`p${i}_name`));
+        }
+
+        const mailCollectionName = `${eventData.eventName.replace(/\s+/g, "")}Mails`;
+        const mailSubject = `Registration Received for ${eventData.eventName} | IEEE - VBIT SB`;
+        let mailBody = eventData.emailTemplate.replace(/{name}/g, allNames.join(" & ")).replace(/{eventName}/g, eventData.eventName);
+        if (allEmails.length > 0 && allEmails[0]) {
+            await db.collection(mailCollectionName).add({ to: allEmails, message: { subject: mailSubject, html: mailBody } });
+        }
+
+        const requires2ndMailConfirmation = eventData.enable2ndMailEnabled === true;
+        const requiresVerification = (eventData.paymentsEnabled && needsToPay) || (isMember && isFreeForMembers) || requires2ndMailConfirmation;
+
+        const successTitle = requiresVerification ? "Registration Submitted!" : "Registration Successful!";
+        const successText = requiresVerification ? "Your spot is reserved. You will receive a final confirmation email once your details are verified by our team." : "Thank you for registering. You will receive a confirmation email shortly.";
+        Swal.fire({ title: successTitle, text: successText, icon: 'info', confirmButtonText: "Great!" }).then(() => { window.location.href = "about.html"; });
+
+    } catch (error) {
+        console.error("Error submitting registration:", error);
+        Swal.fire("Submission Error", error.message, "error");
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "Submit";
+    }
 }
 
 // --- INITIALIZE THE PAGE ---
