@@ -23,7 +23,7 @@ async function displayRegistrations(eventId) {
     const eventData = eventDoc.data();
     document.getElementById("event-name-title").textContent = `Registrations for: ${eventData.eventName}`;
 
-    const registrationCollectionName = `${eventData.eventName.replace(/\s+/g, "")}Participants`;
+    const registrationCollectionName = `${eventData.eventName.replace(/[\s|]+/g, "")}Participants`;
 
     db.collection(registrationCollectionName).orderBy("timeStamp", "desc").onSnapshot((snapshot) => {
       container.innerHTML = "";
@@ -149,7 +149,7 @@ function addVerificationListeners(registrationCollectionName, eventData) {
             if (regData[`p${i}_name`]) allNames.push(regData[`p${i}_name`]);
           }
 
-          const mailCollectionName = `${eventData.eventName.replace(/\s+/g, "")}Mails`;
+          const mailCollectionName = `${eventData.eventName.replace(/[\s|]+/g, "")}Mails`;
           const mailSubject = `Your Registration is Confirmed for ${eventData.eventName}!`;
 
           // Check if confirmation email template exists

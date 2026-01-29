@@ -528,7 +528,7 @@ async function processRegistration() {
         registrationData.verificationStatus = requiresPaymentVerification || requiresMemberVerification || requires2ndMail ? "pending" : "not-required";
 
         const collectionSuffix = "Participants";
-        const collectionName = `${eventData.eventName.replace(/\s+/g, "")}${collectionSuffix}`;
+        const collectionName = `${eventData.eventName.replace(/[\s|]+/g, "")}${collectionSuffix}`;
         await db.collection(collectionName).add(registrationData);
 
         let allEmails = [];
@@ -538,7 +538,7 @@ async function processRegistration() {
             allNames.push(formData.get(`p${i}_name`));
         }
 
-        const mailCollectionName = `${eventData.eventName.replace(/\s+/g, "")}Mails`;
+        const mailCollectionName = `${eventData.eventName.replace(/[\s|]+/g, "")}Mails`;
         const mailSubject = `Registration Received for ${eventData.eventName} | IEEE - VBIT SB`;
         let mailBody = eventData.emailTemplate.replace(/{name}/g, allNames.join(" & ")).replace(/{eventName}/g, eventData.eventName);
         if (allEmails.length > 0 && allEmails[0]) {
